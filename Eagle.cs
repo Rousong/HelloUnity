@@ -14,7 +14,7 @@ public class Eagle : Enemy
 
     private bool isUp;
 
-    protected void Start()
+    protected override void Start()
     {
         base.Start();
         rb = GetComponent<Rigidbody2D>();

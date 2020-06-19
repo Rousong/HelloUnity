@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 
@@ -14,6 +15,9 @@ public class PlayerCpntroller : MonoBehaviour
     [SerializeField]
     private Animator anim;
     public Collider2D coll;
+    public Collider2D dissColl;
+    public Transform cellingCheck;
+    public AudioSource jumpAudio, hurtAudio,cherryAudio;
 
     [Range(100, 500)]
     public float speed = 300;
@@ -53,7 +57,7 @@ public class PlayerCpntroller : MonoBehaviour
 
         if (horizaontalMove != 0)
         {
-            rb.velocity = new Vector2(horizaontalMove * speed * Time.deltaTime, rb.velocity.y);
+            rb.velocity = new Vector2(horizaontalMove * speed * Time.fixedDeltaTime, rb.velocity.y);
             anim.SetFloat("running", Math.Abs(faceDirection));
         }
         if (faceDirection != 0)
@@ -61,12 +65,14 @@ public class PlayerCpntroller : MonoBehaviour
             transform.localScale = new Vector3(faceDirection, 1, 1);
         }
         // Jump
-        if (Input.GetButtonDown("Jump") && coll.IsTouchingLayers(ground))
+        if (Input.GetButton("Jump") && coll.IsTouchingLayers(ground))
         {
-            rb.velocity = new Vector2(rb.velocity.x, jumpForce * Time.deltaTime);
+            jumpAudio.Play();
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce * Time.fixedDeltaTime);
             anim.SetBool("jumping", true);
 
         }
+        Crouch();
     }
 
     void SwitchAnim()
@@ -110,10 +116,18 @@ public class PlayerCpntroller : MonoBehaviour
     {
         if (collision.tag == "Collection")
         {
+            cherryAudio.Play();
             Destroy(collision.gameObject);
             cherry += 1;
             cherryNum.text = cherry.ToString();
         }
+        // 掉落后死亡重置游戏
+        if (collision.tag == "DeadLine")
+        {
+            GetComponent<AudioSource>().enabled = false;
+            Invoke("Restart",2);
+        }
+
     }
     //敵を倒す
     private void OnCollisionEnter2D(Collision2D collision)
@@ -127,9 +141,10 @@ public class PlayerCpntroller : MonoBehaviour
                 enemy.JumpOn();
                 rb.velocity = new Vector2(rb.velocity.x, jumpForce * Time.deltaTime);
                 anim.SetBool("jumping", true);
-            }
+            }// shou shang 
             else if (transform.position.x < collision.gameObject.transform.position.x)
             {
+                hurtAudio.Play();
                 rb.velocity = new Vector2(-10, rb.velocity.y);
                 isHurt = true;
             }
@@ -140,6 +155,27 @@ public class PlayerCpntroller : MonoBehaviour
             }
         }
 
+    }
+
+    private void Crouch()
+    {
+        if (!Physics2D.OverlapCircle(cellingCheck.position,0.2f,ground)) {
+
+            if (Input.GetButton("Crouch"))
+            {
+                anim.SetBool("crouching", true);
+                dissColl.enabled = false;
+            }
+            else 
+            {
+                anim.SetBool("crouching", false);
+                dissColl.enabled = true;
+            }
+        }
+    }
+    void Restart()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
 
