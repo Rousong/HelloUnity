@@ -16,17 +16,16 @@ public class PlayerCpntroller : MonoBehaviour
     private Animator anim;
     public Collider2D coll;
     public Collider2D dissColl;
-    public Transform cellingCheck;
-    public AudioSource jumpAudio, hurtAudio,cherryAudio;
+    public Transform cellingCheck,groundCheck;
+    //public AudioSource jumpAudio, hurtAudio,cherryAudio;
 
-    [Range(100, 500)]
-    public float speed = 300;
+    [Range(1, 500)]
+    public float speed = 10;
     public float jumpForce;
     public int cherry;
-
+    private float horizontalMove;
     public Text cherryNum;
 
-    public Transform groundCheck;
     public LayerMask ground;
 
     public bool isGround, isJump;
@@ -37,61 +36,124 @@ public class PlayerCpntroller : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        //coll = GetComponent<Collider2D>();
         anim = GetComponent<Animator>();
     }
 
+    private void Update()
+    {
+        if (Input.GetButtonDown("Jump") && jumpCount > 0)
+        {
+            jumpPressed = true;
+        }
+        //NewJump();
+        Crouch();
+        cherryNum.text = cherry.ToString();
+    }
     private void FixedUpdate()
     {
+
+        // 检测玩家是否在地面上  在脚下这个点画一个圆圈  然后check 返回布尔型  0.1是检测范围 和ground这个layermask做检测
+        isGround = Physics2D.OverlapCircle(groundCheck.position, 0.2f, ground);
         if (!isHurt)
         {
             PlayerMove();
         }
+        Jump();
         SwitchAnim();
     }
 
     private void PlayerMove()
     {
-        float horizaontalMove = Input.GetAxis("Horizontal");
         // raw 的话就是整数 1 0 -1
-        float faceDirection = Input.GetAxisRaw("Horizontal");
+        horizontalMove = Input.GetAxisRaw("Horizontal");
+        rb.velocity = new Vector2(horizontalMove * speed, rb.velocity.y);
 
-        if (horizaontalMove != 0)
+        if (horizontalMove != 0)
         {
-            rb.velocity = new Vector2(horizaontalMove * speed * Time.fixedDeltaTime, rb.velocity.y);
-            anim.SetFloat("running", Math.Abs(faceDirection));
+            transform.localScale = new Vector3(horizontalMove, 1, 1);
         }
-        if (faceDirection != 0)
-        {
-            transform.localScale = new Vector3(faceDirection, 1, 1);
-        }
-        // Jump
-        if (Input.GetButton("Jump") && coll.IsTouchingLayers(ground))
-        {
-            jumpAudio.Play();
-            rb.velocity = new Vector2(rb.velocity.x, jumpForce * Time.fixedDeltaTime);
-            anim.SetBool("jumping", true);
 
-        }
-        Crouch();
     }
+
+    void Jump()
+    {
+        if (isGround)
+        {
+            jumpCount = 1;
+            isJump = false;
+        }
+        if (jumpPressed && isGround)
+        {
+            isJump = true;
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+            jumpCount--;
+            jumpPressed = false;
+        }
+        else if (jumpPressed && jumpCount > 0 && isJump)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+            jumpCount--;
+            jumpPressed = false;
+        }
+
+    }
+
+    //void NewJump()
+    //{
+    //    if (isGround)
+    //    {
+    //        jumpCount = 1;
+    //        isJump = false;
+    //    }
+    //    if (Input.GetButtonDown("Jump") && jumpCount > 0)
+    //    {
+    //        rb.velocity = Vector2.up * jumpForce;
+    //        jumpCount--;
+    //        SoundManager.instance.JumpAudio();
+    //        anim.SetBool("jumping", true);
+    //    }
+    //    if (Input.GetButtonDown("Jump") && jumpCount == 0 && isGround)
+    //    {
+    //        rb.velocity = Vector2.up * jumpForce;
+    //        SoundManager.instance.JumpAudio();
+    //        anim.SetBool("jumping", true);
+    //    }
+    //}
 
     void SwitchAnim()
     {
-        anim.SetBool("idle", false);
+        //anim.SetBool("idle", false);
+        anim.SetFloat("running", Mathf.Abs(rb.velocity.x));
 
-        if (rb.velocity.y < 0.1f && !coll.IsTouchingLayers(ground))
+        if (isGround)
         {
+            anim.SetBool("falling", false);
+            print(anim.GetBool("falling"));
+        }
+        else if (!isGround && rb.velocity.y > 0)
+        {
+            anim.SetBool("jumping", true);
+        }
+        else if (rb.velocity.y < 0)
+        {
+            anim.SetBool("jumping", false);
             anim.SetBool("falling", true);
+            print(rb.velocity.y);
         }
+        //if (rb.velocity.y < 0.1f && !coll.IsTouchingLayers(ground))
+        //{
+        //    anim.SetBool("falling", true);
+        //}
 
-        if (anim.GetBool("jumping"))
-        {
-            if (rb.velocity.y < 0)
-            {
-                anim.SetBool("jumping", false);
-                anim.SetBool("falling", true);
-            }
-        }
+        //if (anim.GetBool("jumping"))
+        //{
+        //    if (rb.velocity.y < 0)
+        //    {
+        //        anim.SetBool("jumping", false);
+        //        anim.SetBool("falling", true);
+        //    }
+        //}
         else if (isHurt)
         {
             anim.SetBool("hurt", true);
@@ -99,16 +161,16 @@ public class PlayerCpntroller : MonoBehaviour
             if (Mathf.Abs(rb.velocity.x) < 5f)
             {
                 anim.SetBool("hurt", false);
-                anim.SetBool("idle", true);
+                //anim.SetBool("idle", true);
                 isHurt = false;
             }
 
         }
-        else if (coll.IsTouchingLayers(ground))
-        {
-            anim.SetBool("falling", false);
-            anim.SetBool("idle", true);
-        }
+        //else if (coll.IsTouchingLayers(ground))
+        //{
+        //    anim.SetBool("falling", false);
+        //    //anim.SetBool("idle", true);
+        //}
     }
 
     //アイテム収集
@@ -116,10 +178,11 @@ public class PlayerCpntroller : MonoBehaviour
     {
         if (collision.tag == "Collection")
         {
-            cherryAudio.Play();
-            Destroy(collision.gameObject);
-            cherry += 1;
-            cherryNum.text = cherry.ToString();
+            //cherryAudio.Play();
+            //Destroy(collision.gameObject);
+            //cherry += 1;
+            collision.GetComponent<Animator>().Play("isGot");
+            //cherryNum.text = cherry.ToString();
         }
         // 掉落后死亡重置游戏
         if (collision.tag == "DeadLine")
@@ -144,12 +207,14 @@ public class PlayerCpntroller : MonoBehaviour
             }// shou shang 
             else if (transform.position.x < collision.gameObject.transform.position.x)
             {
-                hurtAudio.Play();
+                //hurtAudio.Play();
+                SoundManager.instance.HurtAudio();
                 rb.velocity = new Vector2(-10, rb.velocity.y);
                 isHurt = true;
             }
             else if (transform.position.x > collision.gameObject.transform.position.x)
             {
+                SoundManager.instance.HurtAudio();
                 rb.velocity = new Vector2(10, rb.velocity.y);
                 isHurt = true;
             }
@@ -176,6 +241,10 @@ public class PlayerCpntroller : MonoBehaviour
     void Restart()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    public void CherryCount() {
+        cherry++;
     }
 }
 
